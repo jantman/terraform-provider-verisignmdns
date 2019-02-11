@@ -14,8 +14,7 @@ import (
 
 type api_client struct {
   http_client           *http.Client
-  uri                   string
-  insecure              bool
+  base_url              string
   username              string
   password              string
   headers               map[string]string
@@ -34,24 +33,18 @@ func NewAPIClient (token string, base_url string, i_debug bool, i_timeout int) (
     log.Printf("api_client.go: Constructing debug api_client\n")
   }
 
-  if i_uri == "" {
-    return nil, errors.New("uri must be set to construct an API client")
-  }
-
-  /* Sane default */
-  if i_id_attribute == "" {
-    i_id_attribute = "id"
+  if base_url == "" {
+    return nil, errors.New("base URL must be set to construct a client")
   }
 
   /* Remove any trailing slashes since we will append
      to this URL with our own root-prefixed location */
-  if strings.HasSuffix(i_uri, "/") {
-    i_uri = i_uri[:len(i_uri)-1]
+  if strings.HasSuffix(base_url, "/") {
+    base_url = base_url[:len(base_url)-1]
   }
 
-  /* Disable TLS verification if requested */
   tr := &http.Transport{
-    TLSClientConfig: &tls.Config{InsecureSkipVerify: i_insecure},
+    TLSClientConfig: &tls.Config{InsecureSkipVerify: false},
   }
 
   client := api_client{

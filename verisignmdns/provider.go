@@ -17,12 +17,13 @@ func Provider() *schema.Provider {
                            Type:        schema.TypeString,
                            Optional:    true,
                            DefaultFunc: schema.EnvDefaultFunc(VerisignUrlParamName, "https://mdns.verisign.com/mdns-web/api/"),
-                           Description: "default Arukas API url",
+                           Description: "default Verisign MDNS API url",
                   },
-                  "trace": {
-                         Type:        schema.TypeString,
-                         Optional:    true,
-                         DefaultFunc: schema.EnvDefaultFunc(VerisignDebugParamName, ""),
+                  "debug": {
+                         Type: schema.TypeBool,
+                         Optional: true,
+                         DefaultFunc: schema.EnvDefaultFunc("VerisignDebugParamName", nil),
+                         Description: "Enabling this will cause lots of debug information to be printed to STDOUT by the API client.",
                   },
                   "timeout": {
                            Type:        schema.TypeInt,
@@ -42,7 +43,7 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
   config := Config{
 		Token:   d.Get("token").(string),
 		URL:     d.Get("api_url").(string),
-		Trace:   d.Get("trace").(string),
+		Debug:   d.Get("debug").(bool),
 		Timeout: d.Get("timeout").(int),
 	}
 

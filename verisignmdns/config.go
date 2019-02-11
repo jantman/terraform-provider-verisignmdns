@@ -16,11 +16,11 @@ const (
 type Config struct {
 	Token   string
 	URL     string
-	Trace   string
+	Debug   bool
 	Timeout int
 }
 
-func (c *Config) NewClient() (*arukasClient, error) {
+func (c *Config) NewClient() (*api_client, error) {
 
 	timeout := time.Duration(0)
 	if c.Timeout > 0 {
@@ -30,9 +30,9 @@ func (c *Config) NewClient() (*arukasClient, error) {
 	client, err := NewAPIClient(
 		c.Token,
 		c.URL,
-		c.Trace != "",
+		c.Debug,
     c.Timeout,
-	})
+	)
 	if err != nil {
 		return nil, err
 	}
