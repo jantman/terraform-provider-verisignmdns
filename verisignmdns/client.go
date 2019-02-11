@@ -10,37 +10,37 @@ import (
   "strings"
   "bytes"
   "time"
+  "encoding/json"
 )
 
 type api_client struct {
   http_client           *http.Client
   base_url              string
-  username              string
-  password              string
-  headers               map[string]string
-  redirects             int
+  token                 string
   timeout               int
-  id_attribute          string
-  copy_keys             []string
-  write_returns_object  bool
-  create_returns_object bool
   debug                 bool
 }
 
+type api_response struct {
+  body                    string
+  resp_code               int
+  location                string
+}
+
 // Make a new api client for RESTful calls
-func NewAPIClient (token string, base_url string, i_debug bool, i_timeout int) (*api_client, error) {
+func NewAPIClient (i_token string, i_base_url string, i_debug bool, i_timeout int) (*api_client, error) {
   if i_debug {
     log.Printf("api_client.go: Constructing debug api_client\n")
   }
 
-  if base_url == "" {
+  if i_base_url == "" {
     return nil, errors.New("base URL must be set to construct a client")
   }
 
   /* Remove any trailing slashes since we will append
      to this URL with our own root-prefixed location */
-  if strings.HasSuffix(base_url, "/") {
-    base_url = base_url[:len(base_url)-1]
+  if strings.HasSuffix(i_base_url, "/") {
+    i_base_url = i_base_url[:len(i_base_url)-1]
   }
 
   tr := &http.Transport{
@@ -52,16 +52,9 @@ func NewAPIClient (token string, base_url string, i_debug bool, i_timeout int) (
       Timeout: time.Second * time.Duration(i_timeout),
       Transport: tr,
       },
-    uri: i_uri,
-    insecure: i_insecure,
-    username: i_username,
-    password: i_password,
-    headers: i_headers,
-    id_attribute: i_id_attribute,
-    copy_keys: i_copy_keys,
-    write_returns_object: i_wro,
-    create_returns_object: i_cro,
-    redirects: 5,
+    timeout: i_timeout,
+    base_url: i_base_url,
+    token: i_token,
     debug: i_debug,
   }
 
@@ -75,28 +68,32 @@ func NewAPIClient (token string, base_url string, i_debug bool, i_timeout int) (
 // This is useful for debugging.
 func (obj *api_client) toString() string {
   var buffer bytes.Buffer
-  buffer.WriteString(fmt.Sprintf("uri: %s\n", obj.uri))
-  buffer.WriteString(fmt.Sprintf("insecure: %t\n", obj.insecure))
-  buffer.WriteString(fmt.Sprintf("username: %s\n", obj.username))
-  buffer.WriteString(fmt.Sprintf("password: %s\n", obj.password))
-  buffer.WriteString(fmt.Sprintf("id_attribute: %s\n", obj.id_attribute))
-  buffer.WriteString(fmt.Sprintf("write_returns_object: %t\n", obj.write_returns_object))
-  buffer.WriteString(fmt.Sprintf("create_returns_object: %t\n", obj.create_returns_object))
-  buffer.WriteString(fmt.Sprintf("headers:\n"))
-  for k,v := range obj.headers {
-    buffer.WriteString(fmt.Sprintf("  %s: %s\n", k,v))
-  }
-  for _, n := range obj.copy_keys {
-    buffer.WriteString(fmt.Sprintf("  %s", n))
-  }
+  buffer.WriteString(fmt.Sprintf("base_url: %s\n", obj.base_url))
+  buffer.WriteString(fmt.Sprintf("token: %s\n", obj.token))
+  buffer.WriteString(fmt.Sprintf("Timeout: %d\n", obj.timeout))
   return buffer.String()
 }
 
-/* Helper function that handles sending/receiving and handling
-   of HTTP data in and out.
-   TODO: Handle redirects */
-func (client *api_client) send_request (method string, path string, data string) (string, error) {
-  full_uri := client.uri + path
+func (client *api_client) get_rr (accountId string, zoneName string, resourceRecordId string) (map[string]interface{}, error) {
+  var data map[string]interface{}
+  path := fmt.Sprintf("/api/v1/accounts/%s/zones/%s/rr/%s", accountId, zoneName, resourceRecordId)
+  resp, err := client.send_request("GET", path, "")
+
+  if err != nil { return make(map[string]interface{}), err }
+
+  if resp.resp_code != 200 {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error GETting RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  err3 := json.Unmarshal([]byte(resp.body), &data)
+  if err3 != nil {
+    return nil, err3
+  }
+  return data, nil
+}
+
+func (client *api_client) send_request (method string, path string, data string) (api_response, error) {
+  full_uri := client.base_url + path
   var req *http.Request
   var err error
 
@@ -110,33 +107,21 @@ func (client *api_client) send_request (method string, path string, data string)
     req, err = http.NewRequest(method, full_uri, nil)
   } else {
     req, err = http.NewRequest(method, full_uri, buffer)
-
-    /* Default of application/json, but allow headers array to overwrite later */
-    if err == nil {
-      req.Header.Set("Content-Type", "application/json")
-    }
   }
 
   if err != nil {
     log.Fatal(err)
-    return "", err
+    return api_response{}, err
   }
 
   if client.debug {
     log.Printf("api_client.go: Sending HTTP request to %s...\n", req.URL)
   }
 
-  /* Allow for tokens or other pre-created secrets */
-  if len(client.headers) > 0 {
-    for n, v := range client.headers {
-      req.Header.Set(n, v)
-    }
-  }
-
-  if client.username != "" && client.password != "" {
-    /* ... and fall back to basic auth if configured */
-    req.SetBasicAuth(client.username, client.password)
-  }
+  req.Header.Set("Content-Type", "application/json")
+  req.Header.Set("Accept", "application/json")
+  req.Header.Set("User-Agent", userAgentFormat)
+  req.Header.Set("Authorization", fmt.Sprintf("token %s", client.token))
 
   if client.debug {
     log.Printf("api_client.go: Request headers:\n")
@@ -154,41 +139,38 @@ func (client *api_client) send_request (method string, path string, data string)
     log.Printf("%s\n", body)
   }
 
-  for num_redirects := client.redirects; num_redirects >= 0; num_redirects-- {
-    resp, err := client.http_client.Do(req)
+  resp, err := client.http_client.Do(req)
 
-    if err != nil {
-      //log.Printf("api_client.go: Error detected: %s\n", err)
-      return "", err
-    }
+  if err != nil {
+    log.Printf("api_client.go: Error detected: %s\n", err)
+    return api_response{}, err
+  }
 
-    if client.debug {
-      log.Printf("api_client.go: Response code: %d\n", resp.StatusCode)
-      log.Printf("api_client.go: Response headers:\n")
-      for name, headers := range resp.Header {
-        for _, h := range headers {
-         log.Printf("api_client.go:   %v: %v", name, h)
-        }
+  if client.debug {
+    log.Printf("api_client.go: Response code: %d\n", resp.StatusCode)
+    log.Printf("api_client.go: Response headers:\n")
+    for name, headers := range resp.Header {
+      for _, h := range headers {
+       log.Printf("api_client.go:   %v: %v", name, h)
       }
     }
+  }
 
-    bodyBytes, err2 := ioutil.ReadAll(resp.Body)
-    resp.Body.Close()
+  bodyBytes, err2 := ioutil.ReadAll(resp.Body)
+  resp.Body.Close()
 
-    if err2 != nil { return "", err2 }
-    body := string(bodyBytes)
+  if err2 != nil { return api_response{}, err2 }
+  body := string(bodyBytes)
+  if client.debug { log.Printf("api_client.go: BODY:\n%s\n", body) }
 
-    if resp.StatusCode == 301 || resp.StatusCode == 302 {
-      //Redirecting... decrement num_redirects and proceed to the next loop
-      //uri = URI.parse(rsp['Location'])
-    } else if resp.StatusCode == 404 || resp.StatusCode < 200 || resp.StatusCode >= 303 {
-      return "", errors.New(fmt.Sprintf("Unexpected response code '%d': %s", resp.StatusCode, body))
-    } else {
-      if client.debug { log.Printf("api_client.go: BODY:\n%s\n", body) }
-      return body, nil
-    }
-
-  } //End loop through redirect attempts
-
-  return "", errors.New("Error - too many redirects!")
+  loc, err4 := resp.Location()
+  if err4 != nil {
+    log.Printf("api_client.go - Error parsing resp.Location()")
+  }
+  if client.debug { log.Printf("api_client.go response Location header: %s", loc)}
+  return api_response{
+    body: body,
+    resp_code: resp.StatusCode,
+    location: loc.String(),
+  }, nil
 }
