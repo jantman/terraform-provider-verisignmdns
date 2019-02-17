@@ -58,7 +58,7 @@ def abort_if_bad_account_or_zone(accountId, zoneName):
 def abort_if_bad_auth():
     auth = request.headers.get('Authorization', '')
     if auth != 'Token %s' % AUTH_TOKEN:
-        app.logger.info('401 - wrong token')
+        app.logger.info('401 - wrong token: %s', auth)
         abort(
             401,
             error_code="401",

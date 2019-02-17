@@ -76,7 +76,7 @@ func (obj *api_client) toString() string {
 
 func (client *api_client) get_rr (accountId string, zoneName string, resourceRecordId string) (map[string]interface{}, error) {
   var data map[string]interface{}
-  path := fmt.Sprintf("/api/v1/accounts/%s/zones/%s/rr/%s", accountId, zoneName, resourceRecordId)
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr/%s", client.base_url, accountId, zoneName, resourceRecordId)
   resp, err := client.send_request("GET", path, "")
 
   if err != nil { return make(map[string]interface{}), err }
@@ -92,13 +92,70 @@ func (client *api_client) get_rr (accountId string, zoneName string, resourceRec
   return data, nil
 }
 
-func (client *api_client) send_request (method string, path string, data string) (api_response, error) {
-  full_uri := client.base_url + path
+func (client *api_client) create_rr (accountId string, zoneName string, recordName string, recordType string, recordData string) (map[string]interface{}, error) {
+  var data map[string]interface{}
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr", client.base_url, accountId, zoneName)
+
+  type NewRr struct {
+    Owner    string `json:"owner"`
+    Type     string `json:"type"`
+    Rdata    string `json:"rdata"`
+    Comments string `json:"comments"`
+  }
+
+  recData := NewRr{
+    Owner:    recordName,
+    Type:     recordType,
+    Rdata:    recordData,
+    Comments: "created by terraform-provider-verisignmdns",
+  }
+
+  sendData, err2 := json.Marshal(recData)
+  if err2 != nil {
+    return nil, err2
+  }
+
+  resp, err := client.send_request("POST", path, string(sendData))
+  if err != nil { return make(map[string]interface{}), err }
+  if client.debug {
+    log.Printf("api_client.go: create_rr got send_request response: +%v", resp)
+  }
+
+  if resp.resp_code != 201 {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error Creating RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  if resp.location == "" {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error Creating RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  // Ok, created, follow the Location
+  resp2, err4 := client.send_request("GET", resp.location, "")
+  if client.debug {
+    log.Printf("api_client.go: create_rr GET got send_request response: +%v", resp2)
+  }
+
+  if err4 != nil { return make(map[string]interface{}), err4 }
+
+  if resp2.resp_code != 200 {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error GETting RR - HTTP %d - %s", resp2.resp_code, resp2.body))
+  }
+
+  err3 := json.Unmarshal([]byte(resp2.body), &data)
+  if err3 != nil {
+    return nil, err3
+  }
+  return data, nil
+}
+
+func (client *api_client) send_request (method string, full_uri string, data string) (api_response, error) {
   var req *http.Request
   var err error
+  var locStr string
 
+  log.Printf("client.debug=%s", client.debug)
   if client.debug {
-    log.Printf("api_client.go: method='%s', path='%s', full uri (derived)='%s', data='%s'\n", method, path, full_uri, data)
+    log.Printf("api_client.go: method='%s', full_uri='%s', data='%s'\n", method, full_uri, data)
   }
 
   buffer := bytes.NewBuffer([]byte(data))
@@ -121,7 +178,7 @@ func (client *api_client) send_request (method string, path string, data string)
   req.Header.Set("Content-Type", "application/json")
   req.Header.Set("Accept", "application/json")
   req.Header.Set("User-Agent", userAgentFormat)
-  req.Header.Set("Authorization", fmt.Sprintf("token %s", client.token))
+  req.Header.Set("Authorization", fmt.Sprintf("Token %s", client.token))
 
   if client.debug {
     log.Printf("api_client.go: Request headers:\n")
@@ -163,14 +220,17 @@ func (client *api_client) send_request (method string, path string, data string)
   body := string(bodyBytes)
   if client.debug { log.Printf("api_client.go: BODY:\n%s\n", body) }
 
+  locStr = ""
   loc, err4 := resp.Location()
   if err4 != nil {
     log.Printf("api_client.go - Error parsing resp.Location()")
+  } else {
+    locStr = loc.String()
+    if client.debug { log.Printf("api_client.go response Location header: %s", locStr)}
   }
-  if client.debug { log.Printf("api_client.go response Location header: %s", loc)}
   return api_response{
     body: body,
     resp_code: resp.StatusCode,
-    location: loc.String(),
+    location: locStr,
   }, nil
 }

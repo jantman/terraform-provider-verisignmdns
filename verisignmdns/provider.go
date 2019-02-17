@@ -22,7 +22,7 @@ func Provider() *schema.Provider {
                   "debug": {
                          Type: schema.TypeBool,
                          Optional: true,
-                         DefaultFunc: schema.EnvDefaultFunc("VerisignDebugParamName", nil),
+                         DefaultFunc: schema.EnvDefaultFunc(VerisignDebugParamName, false),
                          Description: "Enabling this will cause lots of debug information to be printed to STDOUT by the API client.",
                   },
                   "timeout": {

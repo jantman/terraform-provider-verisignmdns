@@ -27,3 +27,7 @@ Helpful links if I (or anyone else) picks this up:
 * [terraform-providers/terraform-provider-template: Terraform template provider](https://github.com/terraform-providers/terraform-provider-template)
 * a random, simple example provider: [terraform-provider-arukas](https://github.com/terraform-providers/terraform-provider-arukas)
 * a generic ReST API provider: [Mastercard/terraform-provider-restapi: A terraform provider to manage objects in a RESTful API](https://github.com/Mastercard/terraform-provider-restapi)
+
+## Development
+
+See [Provider Plugins - Terraform by HashiCorp](https://www.terraform.io/docs/plugins/provider.html)
