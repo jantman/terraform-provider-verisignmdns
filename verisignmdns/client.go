@@ -17,6 +17,8 @@ type api_client struct {
   http_client           *http.Client
   base_url              string
   token                 string
+  account_id            string
+  zone_name             string
   timeout               int
   debug                 bool
 }
@@ -28,7 +30,7 @@ type api_response struct {
 }
 
 // Make a new api client for RESTful calls
-func NewAPIClient (i_token string, i_base_url string, i_debug bool, i_timeout int) (*api_client, error) {
+func NewAPIClient (i_token string, i_base_url string, i_account_id string, i_zone_name string, i_debug bool, i_timeout int) (*api_client, error) {
   if i_debug {
     log.Printf("api_client.go: Constructing debug api_client\n")
   }
@@ -56,6 +58,8 @@ func NewAPIClient (i_token string, i_base_url string, i_debug bool, i_timeout in
     base_url: i_base_url,
     token: i_token,
     debug: i_debug,
+    account_id: i_account_id,
+    zone_name: i_zone_name,
   }
 
   if i_debug {
@@ -70,13 +74,15 @@ func (obj *api_client) toString() string {
   var buffer bytes.Buffer
   buffer.WriteString(fmt.Sprintf("base_url: %s\n", obj.base_url))
   buffer.WriteString(fmt.Sprintf("token: %s\n", obj.token))
-  buffer.WriteString(fmt.Sprintf("Timeout: %d\n", obj.timeout))
+  buffer.WriteString(fmt.Sprintf("timeout: %d\n", obj.timeout))
+  buffer.WriteString(fmt.Sprintf("accound_id: %s\n", obj.account_id))
+  buffer.WriteString(fmt.Sprintf("zone_name: %s\n", obj.zone_name))
   return buffer.String()
 }
 
-func (client *api_client) get_rr (accountId string, zoneName string, resourceRecordId string) (map[string]interface{}, error) {
+func (client *api_client) get_rr (resourceRecordId string) (map[string]interface{}, error) {
   var data map[string]interface{}
-  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr/%s", client.base_url, accountId, zoneName, resourceRecordId)
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr/%s", client.base_url, client.account_id, client.zone_name, resourceRecordId)
   resp, err := client.send_request("GET", path, "")
 
   if err != nil { return make(map[string]interface{}), err }
@@ -92,9 +98,9 @@ func (client *api_client) get_rr (accountId string, zoneName string, resourceRec
   return data, nil
 }
 
-func (client *api_client) create_rr (accountId string, zoneName string, recordName string, recordType string, recordData string) (map[string]interface{}, error) {
+func (client *api_client) create_rr (recordName string, recordType string, recordData string) (map[string]interface{}, error) {
   var data map[string]interface{}
-  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr", client.base_url, accountId, zoneName)
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr", client.base_url, client.account_id, client.zone_name)
 
   type NewRr struct {
     Owner    string `json:"owner"`

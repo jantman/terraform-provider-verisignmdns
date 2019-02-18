@@ -13,6 +13,18 @@ func Provider() *schema.Provider {
                          DefaultFunc: schema.EnvDefaultFunc(VerisignTokenParamName, nil),
                          Description: "your Verisign MDNS ReST API token",
                   },
+                  "account_id": {
+                              Type:        schema.TypeString,
+                              Required:    true,
+                              DefaultFunc: schema.EnvDefaultFunc(VerisignAccountParamName, nil),
+                              Description: "Verisign MDNS Account ID to act on",
+                  },
+                  "zone_name": {
+                             Type:        schema.TypeString,
+                             Required:    true,
+                             DefaultFunc: schema.EnvDefaultFunc(VerisignZoneParamName, nil),
+                             Description: "Zone name to manage records in",
+                  },
                   "api_url": {
                            Type:        schema.TypeString,
                            Optional:    true,
@@ -41,10 +53,12 @@ func Provider() *schema.Provider {
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
   config := Config{
-		Token:   d.Get("token").(string),
-		URL:     d.Get("api_url").(string),
-		Debug:   d.Get("debug").(bool),
-		Timeout: d.Get("timeout").(int),
+		Token:     d.Get("token").(string),
+		URL:       d.Get("api_url").(string),
+		Debug:     d.Get("debug").(bool),
+		Timeout:   d.Get("timeout").(int),
+    AccountId: d.Get("account_id").(string),
+    ZoneName:  d.Get("zone_name").(string),
 	}
 
   return config.NewClient()

@@ -13,14 +13,6 @@ func resourceRr() *schema.Resource {
 
                 SchemaVersion: 1,
                 Schema: map[string]*schema.Schema{
-                        "account_id": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
-                        },
-                        "zone_name": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
-                        },
                         "record_name": &schema.Schema{
                                 Type:     schema.TypeString,
                                 Required: true,
@@ -33,6 +25,14 @@ func resourceRr() *schema.Resource {
                                 Type:     schema.TypeString,
                                 Required: true,
                         },
+                        "account_id": &schema.Schema{
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
+                        "zone_name": &schema.Schema{
+                                Type:     schema.TypeString,
+                                Optional: true,
+                        },
                 },
         }
 }
@@ -40,8 +40,6 @@ func resourceRr() *schema.Resource {
 func resourceRrCreate(d *schema.ResourceData, m interface{}) error {
   client := m.(*api_client)
   data, err := client.create_rr(
-    d.Get("account_id").(string),
-    d.Get("zone_name").(string),
     d.Get("record_name").(string),
     d.Get("record_type").(string),
     d.Get("record_data").(string),
@@ -56,8 +54,6 @@ func resourceRrCreate(d *schema.ResourceData, m interface{}) error {
 func resourceRrRead(d *schema.ResourceData, m interface{}) error {
   client := m.(*api_client)
   data, err := client.get_rr(
-    d.Get("accountId").(string),
-    d.Get("zoneName").(string),
     d.Id(),
   )
   if err != nil {
@@ -66,6 +62,8 @@ func resourceRrRead(d *schema.ResourceData, m interface{}) error {
   d.Set("recordName", data["owner"].(string))
   d.Set("recordType", data["type"].(string))
   d.Set("recordData", data["rdata"].(string))
+  d.Set("zone_name", client.zone_name)
+  d.Set("account_id", client.account_id)
   return nil
 }
 
