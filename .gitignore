@@ -1,4 +1,4 @@
 .terraform
 mockapi/.venv
 crash.log
-terraform.tfstate
+terraform.tfstate*

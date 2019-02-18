@@ -72,5 +72,13 @@ func resourceRrUpdate(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceRrDelete(d *schema.ResourceData, m interface{}) error {
-        return nil
+  client := m.(*api_client)
+  err := client.delete_rr(
+    d.Id(),
+  )
+  if err != nil {
+    return err
+  }
+  d.SetId("")
+  return nil
 }

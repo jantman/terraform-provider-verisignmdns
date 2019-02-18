@@ -98,6 +98,33 @@ func (client *api_client) get_rr (resourceRecordId string) (map[string]interface
   return data, nil
 }
 
+func (client *api_client) delete_rr (resourceRecordId string) (error) {
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr/%s", client.base_url, client.account_id, client.zone_name, resourceRecordId)
+
+  type NewRr struct {
+    Comments string `json:"comments"`
+  }
+
+  recData := NewRr{
+    Comments: "deleted by terraform-provider-verisignmdns",
+  }
+
+  sendData, err2 := json.Marshal(recData)
+  if err2 != nil {
+    return err2
+  }
+
+  resp, err := client.send_request("DELETE", path, string(sendData))
+
+  if err != nil { return err }
+
+  if resp.resp_code != 204 {
+    return errors.New(fmt.Sprintf("Error DELETEing RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  return nil
+}
+
 func (client *api_client) create_rr (recordName string, recordType string, recordData string) (map[string]interface{}, error) {
   var data map[string]interface{}
   path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr", client.base_url, client.account_id, client.zone_name)

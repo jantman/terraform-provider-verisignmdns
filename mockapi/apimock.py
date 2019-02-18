@@ -20,6 +20,9 @@ parser.add_argument('rdata', type=str)
 parser.add_argument('ttl', type=int)
 parser.add_argument('comments', type=str)
 
+delete_parser = reqparse.RequestParser()
+delete_parser.add_argument('comments', type=str)
+
 dts = (datetime.now() - timedelta(hours=27)).strftime(
     '%Y-%m-%dT%H:%M:%S.000%z'
 )
@@ -195,14 +198,8 @@ class ResourceRecord(Resource):
         abort_if_bad_auth()
         abort_if_bad_headers()
         abort_if_bad_account_or_zone(accountId, zoneName)
-        args = parser.parse_args(strict=True)
+        args = delete_parser.parse_args(strict=True)
         app.logger.info('DELETE: %s' % args)
-        if len(args.keys) > 0 and list(args.keys) != ['comments']:
-            app.logger.info('DELETE - 422 - bad fields')
-            abort(
-                422,
-                error_code='BAD_FIELDS', error_messages=['foo']
-            )
         if resourceRecordId not in RECORDS:
             app.logger.info('DELETE - 422 - bad ID')
             abort(
