@@ -59,6 +59,14 @@ __PLEASE NOTE__ that there are currently a few limitations:
 * The provider does not currently support TTL fields.
 * Only ``record_data`` can be changed in place; changes to ``record_name`` and ``record_type`` require a destroy and replacement. This is a limitation of the Verisign MDNS API, not the terraform provider.
 
+### Importing
+
+This provider currently supports importing existing records. To import them you will need to know the Verisign MDNS resourceRecordId, which can be found from the [Verisign MDNS ReST API](https://mdns.verisign.com/rest/rest-doc/index.html) (or by mousing over the record link in their web UI). Resource record API paths are in the form ``/api/v1/accounts/{accountId}/zones/{zoneName}/rr/{resourceRecordId}``.
+
+```bash
+terraform import verisignmdns_rr.foo resourceRecordId
+```
+
 ## Development
 
 See [Provider Plugins - Terraform by HashiCorp](https://www.terraform.io/docs/plugins/provider.html)
