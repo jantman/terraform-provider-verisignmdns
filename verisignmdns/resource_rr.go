@@ -55,6 +55,7 @@ func resourceRrCreate(d *schema.ResourceData, m interface{}) error {
     d.Get("record_data").(string),
   )
   if err != nil {
+    d.SetId("")
     return err
   }
   d.SetId(data["resource_record_id"].(string))
@@ -91,7 +92,6 @@ func resourceRrUpdate(d *schema.ResourceData, m interface{}) error {
   if err != nil {
     return err
   }
-  d.SetId(data["resource_record_id"].(string))
   d.Set("recordName", data["owner"].(string))
   d.Set("recordType", data["type"].(string))
   d.Set("recordData", data["rdata"].(string))
