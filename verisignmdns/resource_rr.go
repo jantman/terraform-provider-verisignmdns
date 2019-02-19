@@ -14,24 +14,31 @@ func resourceRr() *schema.Resource {
                 SchemaVersion: 1,
                 Schema: map[string]*schema.Schema{
                         "record_name": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
+                                Type:        schema.TypeString,
+                                Required:    true,
+                                Description: "The name of the record, i.e. the FQDN without a trailing dot.",
+                                ForceNew:    true,
                         },
                         "record_type": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
+                                Type:        schema.TypeString,
+                                Required:    true,
+                                Description: "The type of record, i.e. A, AAAA, CNAME, etc.",
+                                ForceNew:    true,
                         },
                         "record_data": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Required: true,
+                                Type:        schema.TypeString,
+                                Required:    true,
+                                Description: "The value of the record.",
                         },
                         "account_id": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Optional: true,
+                                Type:        schema.TypeString,
+                                Description: "The Account ID the record exists in (configured as part of the provider).",
+                                Computed:    true,
                         },
                         "zone_name": &schema.Schema{
-                                Type:     schema.TypeString,
-                                Optional: true,
+                                Type:        schema.TypeString,
+                                Description: "The Zone Name the record exists in (configured as part of the provider).",
+                                Computed:    true,
                         },
                 },
         }
@@ -48,7 +55,12 @@ func resourceRrCreate(d *schema.ResourceData, m interface{}) error {
     return err
   }
   d.SetId(data["resource_record_id"].(string))
-  return resourceRrRead(d, m)
+  d.Set("recordName", data["owner"].(string))
+  d.Set("recordType", data["type"].(string))
+  d.Set("recordData", data["rdata"].(string))
+  d.Set("zone_name", client.zone_name)
+  d.Set("account_id", client.account_id)
+  return nil
 }
 
 func resourceRrRead(d *schema.ResourceData, m interface{}) error {
@@ -68,7 +80,21 @@ func resourceRrRead(d *schema.ResourceData, m interface{}) error {
 }
 
 func resourceRrUpdate(d *schema.ResourceData, m interface{}) error {
-        return resourceRrRead(d, m)
+  client := m.(*api_client)
+  data, err := client.update_rr(
+    d.Id(),
+    d.Get("record_data").(string),
+  )
+  if err != nil {
+    return err
+  }
+  d.SetId(data["resource_record_id"].(string))
+  d.Set("recordName", data["owner"].(string))
+  d.Set("recordType", data["type"].(string))
+  d.Set("recordData", data["rdata"].(string))
+  d.Set("zone_name", client.zone_name)
+  d.Set("account_id", client.account_id)
+  return nil
 }
 
 func resourceRrDelete(d *schema.ResourceData, m interface{}) error {

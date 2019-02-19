@@ -116,6 +116,10 @@ func (client *api_client) delete_rr (resourceRecordId string) (error) {
 
   resp, err := client.send_request("DELETE", path, string(sendData))
 
+  if client.debug {
+    log.Printf("api_client.go: delete_rr got send_request response: +%v", resp)
+  }
+
   if err != nil { return err }
 
   if resp.resp_code != 204 {
@@ -166,6 +170,58 @@ func (client *api_client) create_rr (recordName string, recordType string, recor
   resp2, err4 := client.send_request("GET", resp.location, "")
   if client.debug {
     log.Printf("api_client.go: create_rr GET got send_request response: +%v", resp2)
+  }
+
+  if err4 != nil { return make(map[string]interface{}), err4 }
+
+  if resp2.resp_code != 200 {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error GETting RR - HTTP %d - %s", resp2.resp_code, resp2.body))
+  }
+
+  err3 := json.Unmarshal([]byte(resp2.body), &data)
+  if err3 != nil {
+    return nil, err3
+  }
+  return data, nil
+}
+
+func (client *api_client) update_rr (resourceRecordId string, recordData string) (map[string]interface{}, error) {
+  var data map[string]interface{}
+  path := fmt.Sprintf("%s/api/v1/accounts/%s/zones/%s/rr/%s", client.base_url, client.account_id, client.zone_name, resourceRecordId)
+
+  type NewRr struct {
+    Rdata    string `json:"rdata"`
+    Comments string `json:"comments"`
+  }
+
+  recData := NewRr{
+    Rdata:    recordData,
+    Comments: "created by terraform-provider-verisignmdns",
+  }
+
+  sendData, err2 := json.Marshal(recData)
+  if err2 != nil {
+    return nil, err2
+  }
+
+  resp, err := client.send_request("PUT", path, string(sendData))
+  if err != nil { return make(map[string]interface{}), err }
+  if client.debug {
+    log.Printf("api_client.go: update_rr got send_request response: +%v", resp)
+  }
+
+  if resp.resp_code != 200 {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error Creating RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  if resp.location == "" {
+    return make(map[string]interface{}), errors.New(fmt.Sprintf("Error Creating RR - HTTP %d - %s", resp.resp_code, resp.body))
+  }
+
+  // Ok, created, follow the Location
+  resp2, err4 := client.send_request("GET", resp.location, "")
+  if client.debug {
+    log.Printf("api_client.go: update_rr GET got send_request response: +%v", resp2)
   }
 
   if err4 != nil { return make(map[string]interface{}), err4 }
