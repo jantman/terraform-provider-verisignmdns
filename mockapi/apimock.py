@@ -30,6 +30,8 @@ delete_parser.add_argument('comments', type=str)
 dts = (datetime.now() - timedelta(hours=27)).strftime(
     '%Y-%m-%dT%H:%M:%S.000%z'
 )
+
+MAX_ID = 1234
 RECORDS = {
     1234: {
         "resource_record_id": "1234",
@@ -44,6 +46,7 @@ RECORDS = {
         "updated_by": "someuser"
     }
 }
+
 
 def abort_if_bad_account_or_zone(accountId, zoneName):
     if accountId != ACCOUNT_ID:
@@ -324,10 +327,10 @@ class ResourceRecordList(Resource):
                 422,
                 error_code='BAD_FIELDS', error_messages=['foo']
             )
-        k = max(RECORDS.keys()) + 1
+        MAX_ID += 1
         dts = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.000%z')
         RECORDS[k] = {
-            "resource_record_id": '%d' % k,
+            "resource_record_id": '%d' % MAX_ID,
             'modifiable': True,
             "owner": args['owner'],
             "type": args['type'],
@@ -339,7 +342,7 @@ class ResourceRecordList(Resource):
             "updated_by": "someuser"
         }
         loc = 'http://%s/api/v1/accounts/%s/zones/%s/rr/%d' % (
-            request.environ['HTTP_HOST'], ACCOUNT_ID, ZONE_NAME, k
+            request.environ['HTTP_HOST'], ACCOUNT_ID, ZONE_NAME, MAX_ID
         )
         return '', 201, {'Location': loc}
 
