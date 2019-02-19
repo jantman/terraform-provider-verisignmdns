@@ -1,33 +1,123 @@
-# terraform-provider-verisignmdns
+# Terraform Verisign MDNS Provider
 
 [![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept)
 
-**Completely unusable WIP/concept code**
+This is a terraform provider for the [Verisign MDNS ReST API](https://mdns.verisign.com/rest/rest-doc/index.html).
+
+## WARNING - WARNING
 
 This is the very beginning of my first attempt at writing a terraform provider
-and first attempt at writing Go: a provider that manages Resource Records (RRs)
-in Verisign Managed DNS (MDNS).
+and first attempt at writing Go. This code is not yet usable.
 
-I started the very bare skeleton of the provider itself, and a Python/Flask
-mocked Verisign MDNS API (since Verisign doesn't appear to have a sandbox).
-After some consideration, I decided that my need for this is so infrequent that
-it's not worth writing a terraform provider, and I'd just write a quick minimal
-script and be on my way. I might come back to it at some point.
+## Using The Provider
 
-For the actual WIP provider skeleton and API Mock skeleton, see [the WIP branch](https://github.com/jantman/terraform-provider-verisignmdns/tree/WIP).
+### Provider Configuration
 
-## References
+The provider requires some explicit configuration. In order to simplify the provider code, a separate provider instance must be configured for every Zone that you want to manage resource records in (this is because terraform stores a simple string unique ID, but Verisign's ReST API paths include the Account ID, Zone Name, and record ID).
 
-Helpful links if I (or anyone else) picks this up:
+```
+provider "verisignmdns" {
+  token      = "YourApiToken"
+  account_id = "YourAccountId"
+  zone_name  = "example.com"
+}
+```
 
-* [Verisign MDNS ReST API docs](https://mdns.verisign.com/rest/rest-doc/index.html) - this provider would (at least initially) only work with the ``/api/v1/accounts/{accountId}/zones/{zoneName}/rr`` and ``/api/v1/accounts/{accountId}/zones/{zoneName}/rr/{resourceRecordId}`` endpoints
-* [Provider Plugins - Terraform by HashiCorp](https://www.terraform.io/docs/plugins/provider.html)
-* Where I left off: "Implement Create" [Writing Custom Providers - Guides - Terraform by HashiCorp](https://www.terraform.io/docs/extend/writing-custom-providers.html#implement-create)
-* [Home - Extending Terraform - Terraform by HashiCorp](https://www.terraform.io/docs/extend/index.html)
-* [terraform-providers/terraform-provider-template: Terraform template provider](https://github.com/terraform-providers/terraform-provider-template)
-* a random, simple example provider: [terraform-provider-arukas](https://github.com/terraform-providers/terraform-provider-arukas)
-* a generic ReST API provider: [Mastercard/terraform-provider-restapi: A terraform provider to manage objects in a RESTful API](https://github.com/Mastercard/terraform-provider-restapi)
+The provider configuration options are as follows:
+
+* ``token`` - Your Verisign MDNS API token. Can also be set with the ``VERISIGN_MDNS_API_TOKEN`` environment variable.
+* ``account_id`` - Your Verisign MDNS Account ID. Can also be set with the ``VERISIGN_ACCOUNT_ID`` environment variable.
+* ``zone_name`` - The Zone that this provider will manage records in. Can also be set with the ``VERISIGN_ZONE_NAME`` environment variable.
+* ``timeout`` - _(optional)_ The ReST API call timeout in seconds. Defaults to 900. Can also be set with the ``VERISIGN_MDNS_TIMEOUT`` environment variable.
+* ``debug`` - _(optional)_ Whether or not to enable debug-level logging for this provider. "true" or "false", defaults to "false". Can also be set with the ``VERISIGN_MDNS_DEBUG`` environment variable.
+* ``api_url`` - _(optional)_ The base URL to the Verisign MDNS API. Really only useful for acceptance tests of the provider itself. Defaults to ``https://mdns.verisign.com/mdns-web/api/``. Can also be set with the ``VERISIGN_MDNS_API_URL`` environment variable.
+
+### Resources
+
+#### verisignmdns_rr
+
+This resource manages a single Resource Record in the Zone the provider is configured for. This is currently the only resource that the provider supports.
+
+This will create an A record at "foo.example.com" with a value of "1.2.3.4":
+
+```
+resource "verisignmdns_rr" "foo" {
+  record_name = "foo.example.com"
+  record_type = "A"
+  record_data = "1.2.3.4"
+}
+```
+
+The resource supports the following parameters:
+
+* ``record_name`` - the name of the resource record (FQDN) without a trailing dot.
+* ``record_type`` - the type of record, i.e. "A", "AAAA", "CNAME", etc.
+* ``record_data`` - the value of the record.
+
+__PLEASE NOTE__ that there are currently a few limitations:
+
+* The provider does not currently support TTL fields.
+* Only ``record_data`` can be changed in place; changes to ``record_name`` and ``record_type`` require a destroy and replacement. This is a limitation of the Verisign MDNS API, not the terraform provider.
 
 ## Development
 
 See [Provider Plugins - Terraform by HashiCorp](https://www.terraform.io/docs/plugins/provider.html)
+
+### Building
+
+Clone repository to: `$GOPATH/src/github.com/jantman/terraform-provider-verisignmdns`
+
+```sh
+$ mkdir -p $GOPATH/src/github.com/jantman; cd $GOPATH/src/github.com/jantman
+$ git clone git@github.com:jantman/terraform-provider-verisignmdns
+```
+
+Enter the provider directory and build the provider
+
+```sh
+$ cd $GOPATH/src/github.com/jantman/terraform-provider-verisignmdns
+$ go build -o terraform-provider-verisignmdns
+```
+
+### Developing
+
+If you wish to work on the provider, you'll first need [Go](http://www.golang.org) installed on your machine (version 1.11+ is *required*). You'll also need to correctly setup a [GOPATH](http://golang.org/doc/code.html#GOPATH), as well as adding `$GOPATH/bin` to your `$PATH`.
+
+To compile the provider, run `go install`. This will build the provider and put the provider binary in the `$GOPATH/bin` directory.
+
+```sh
+$ go install
+...
+$ $GOPATH/bin/terraform-provider-verisignmdns
+...
+```
+
+In order to test the provider, you can simply run `make test`.
+
+```sh
+$ make test
+```
+
+In order to run the full suite of Acceptance tests, run `make testacc`.
+
+*Note:* Acceptance tests create real resources, and often cost money to run. Alternatively,
+you can run against a best-effort API mock using the instructions below.
+
+```sh
+$ make testacc
+```
+
+### Mock API
+
+This provider also includes a Python/Flask mocked Verisign MDNS API, since Verisign
+doesn't appear to offer a sandbox environment. To start up the mocked API server:
+
+```bash
+cd mockapi
+python3 -mvenv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./apimock.py
+```
+
+In another window, ``source scripts/setup_for_dev.sh`` and begin your development.
