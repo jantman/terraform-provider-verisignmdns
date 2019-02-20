@@ -1,7 +1,6 @@
 package verisignmdns
 
 import (
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/schema"
