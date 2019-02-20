@@ -27,7 +27,7 @@ func (c *Config) NewClient() (*api_client, error) {
 		c.AccountId,
 		c.ZoneName,
 		c.Debug,
-    c.Timeout,
+		c.Timeout,
 	)
 	if err != nil {
 		return nil, err
