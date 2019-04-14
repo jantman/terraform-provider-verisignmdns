@@ -1,13 +1,12 @@
-# Terraform Verisign MDNS Provider
+# ABANDONED - Terraform Verisign MDNS Provider
 
-[![Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.](https://www.repostatus.org/badges/latest/concept.svg)](https://www.repostatus.org/#concept)
+[![Project Status: Abandoned – Initial development has started, but there has not yet been a stable, usable release; the project has been abandoned and the author(s) do not intend on continuing development.](https://www.repostatus.org/badges/latest/abandoned.svg)](https://www.repostatus.org/#abandoned)
 
 This is a terraform provider for the [Verisign MDNS ReST API](https://mdns.verisign.com/rest/rest-doc/index.html).
 
-## WARNING - WARNING
+## PROJECT ABANDONED
 
-This is the very beginning of my first attempt at writing a terraform provider
-and first attempt at writing Go. This code is not yet usable.
+This project was not yet in a usable state as of April, 2019. In early April, my employer was notified that all Verisign Managed DNS contracts have been [acquired by Neustar](https://www.home.neustar/about-us/news-room/press-releases/2018/VerisignSecurityServices) and Neustar is requesting that customers migrate off of the Verisign Managed DNS platform by the end of their current contacts. As Verisign MDNS is going away and Neustar UltraDNS has an [official terraform provider](https://www.terraform.io/docs/providers/ultradns/index.html), I'm discontinuing all work on this provider.
 
 ## Using The Provider
 
